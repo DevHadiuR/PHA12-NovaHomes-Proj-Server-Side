@@ -33,6 +33,9 @@ async function run() {
 
     // All Collections are here
     const userCollection = client.db("novaHomesDB").collection("users");
+    const propertyCollection = client
+      .db("novaHomesDB")
+      .collection("properties");
 
     // users collection
     app.post("/allUsers", async (req, res) => {
@@ -115,6 +118,13 @@ async function run() {
       }
 
       res.send({ userRole });
+    });
+
+    // Property Collection
+    app.post("/allProperties", async (req, res) => {
+      const propertyItem = req.body;
+      const result = await propertyCollection.insertOne(propertyItem);
+      res.send(result);
     });
 
     // Send a ping to confirm a successful connection
