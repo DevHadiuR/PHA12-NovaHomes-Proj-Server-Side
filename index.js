@@ -53,12 +53,27 @@ async function run() {
       res.send(result);
     });
 
+    // make user admin route
     app.patch("/allUsers/admin/:id", async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
         $set: {
           role: "admin",
+        },
+      };
+
+      const result = await userCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    // make user agent route
+    app.patch("/allUsers/agent/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          role: "agent",
         },
       };
 
