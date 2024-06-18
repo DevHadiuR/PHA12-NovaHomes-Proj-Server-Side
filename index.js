@@ -2,6 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
+const { verify } = require("jsonwebtoken");
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -170,6 +171,32 @@ async function run() {
 
       const result = await propertyCollection.deleteOne(query);
 
+      res.send(result);
+    });
+
+    app.patch("/allProperties/verified/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          verificationStatus: "Verified",
+        },
+      };
+
+      const result = await propertyCollection.updateOne(filter, updateDoc);
+      res.send(result);
+    });
+
+    app.patch("/allProperties/reject/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          verificationStatus: "Rejected",
+        },
+      };
+
+      const result = await propertyCollection.updateOne(filter, updateDoc);
       res.send(result);
     });
 
