@@ -121,6 +121,11 @@ async function run() {
     });
 
     // Property Collection
+    app.get("/allProperties", async (req, res) => {
+      const result = await propertyCollection.find().toArray();
+      res.send(result);
+    });
+
     app.post("/allProperties", async (req, res) => {
       const propertyItem = req.body;
       const result = await propertyCollection.insertOne(propertyItem);
