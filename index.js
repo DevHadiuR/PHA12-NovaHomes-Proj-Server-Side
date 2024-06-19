@@ -34,6 +34,7 @@ async function run() {
 
     // All Collections are here
     const userCollection = client.db("novaHomesDB").collection("users");
+    const reviewCollection = client.db("novaHomesDB").collection("reviews");
     const wishlistCollection = client.db("novaHomesDB").collection("wishlists");
     const propertyCollection = client
       .db("novaHomesDB")
@@ -224,6 +225,13 @@ async function run() {
       const email = req.params.email;
       const query = { wishlistUserEmail: email };
       const result = await wishlistCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // review colleciton start from here
+    app.post("/allReviews", async (req, res) => {
+      const reviewData = req.body;
+      const result = await reviewCollection.insertOne(reviewData);
       res.send(result);
     });
 
