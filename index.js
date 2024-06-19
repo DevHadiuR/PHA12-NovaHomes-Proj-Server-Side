@@ -229,6 +229,11 @@ async function run() {
     });
 
     // review colleciton start from here
+    app.get("/allReviews", async (req, res) => {
+      const result = await reviewCollection.find().toArray();
+      res.send(result);
+    });
+
     app.post("/allReviews", async (req, res) => {
       const reviewData = req.body;
       const result = await reviewCollection.insertOne(reviewData);
