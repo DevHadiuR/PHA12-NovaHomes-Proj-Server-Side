@@ -210,10 +210,20 @@ async function run() {
       const propertyId = wishlistInfo.propertyId;
       const query = { propertyId: propertyId };
       const isWishlistExist = await wishlistCollection.findOne(query);
+
       if (isWishlistExist) {
-        return res.send({ message: "Property Already Exist in the Wishlist!" });
+        return res
+          .status(409)
+          .send({ message: "Property Already Exist in the Wishlist!" });
       }
       const result = await wishlistCollection.insertOne(wishlistInfo);
+      res.status(201).send(result);
+    });
+
+    app.get("/allWishlist/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { wishlistUserEmail: email };
+      const result = await wishlistCollection.find(query).toArray();
       res.send(result);
     });
 
