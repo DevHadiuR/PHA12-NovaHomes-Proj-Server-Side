@@ -228,6 +228,14 @@ async function run() {
       res.send(result);
     });
 
+    app.delete("/allWishlist", async (req, res) => {
+      const id = req.query.id;
+      const email = req.query.email;
+      const query = { propertyId: id, wishlistUserEmail: email };
+      const result = await wishlistCollection.deleteOne(query);
+      res.send(result);
+    });
+
     // review colleciton start from here
     app.get("/allReviews", async (req, res) => {
       const result = await reviewCollection.find().toArray();
