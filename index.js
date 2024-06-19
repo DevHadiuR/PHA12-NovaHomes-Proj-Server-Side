@@ -34,6 +34,7 @@ async function run() {
 
     // All Collections are here
     const userCollection = client.db("novaHomesDB").collection("users");
+    const wishlistCollection = client.db("novaHomesDB").collection("wishlists");
     const propertyCollection = client
       .db("novaHomesDB")
       .collection("properties");
@@ -147,21 +148,18 @@ async function run() {
       res.send(result);
     });
 
-    app.put("/allProperties/:id", async (req, res) => {
+    app.patch("/allProperties/:id", async (req, res) => {
       const id = req.params.id;
       const body = req.body;
       const query = { _id: new ObjectId(id) };
-      const options = { upsert: true };
+      const existingProperty = await propertyCollection.findOne(query);
       const updatedProperty = {
         $set: {
+          ...existingProperty,
           ...body,
         },
       };
-      const result = await propertyCollection.updateOne(
-        query,
-        updatedProperty,
-        options
-      );
+      const result = await propertyCollection.updateOne(query, updatedProperty);
       res.send(result);
     });
 
@@ -203,6 +201,19 @@ async function run() {
     app.get("/allAdminVerifiedProperites", async (req, res) => {
       const query = { verificationStatus: "Verified" };
       const result = await propertyCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    // wishlist collection from here
+    app.post("/allWishlist", async (req, res) => {
+      const wishlistInfo = req.body;
+      const propertyId = wishlistInfo.propertyId;
+      const query = { propertyId: propertyId };
+      const isWishlistExist = await wishlistCollection.findOne(query);
+      if (isWishlistExist) {
+        return res.send({ message: "Property Already Exist in the Wishlist!" });
+      }
+      const result = await wishlistCollection.insertOne(wishlistInfo);
       res.send(result);
     });
 
