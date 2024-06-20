@@ -144,6 +144,7 @@ async function run() {
 
     app.get("/propertiesById/:id", async (req, res) => {
       const id = req.params.id;
+
       const query = { _id: new ObjectId(id) };
       const result = await propertyCollection.findOne(query);
       res.send(result);
@@ -228,6 +229,32 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/makeAnOfferWishlistItem", async (req, res) => {
+    //   const id = req.query.id;
+    //   const email = req.query.email;
+    //   console.log(id, email);
+    //   const query = { propertyId: id, wishlistUserEmail: email };
+    //   const result = await wishlistCollection.findOne(query);
+    //   res.send(result);
+    // });
+
+    // app.get("/makeAnOfferWishlistItem", async (req, res) => {
+    //   const id = req.query.id;
+    //   const email = req.query.email;
+    //   console.log(id,email);
+    //   const query = { propertyId: id, wishlistUserEmail: email };
+    //   const result = await wishlistCollection.findOne(query);
+    //   res.send(result);
+    // });
+
+    app.get("/makeAnOfferWishlistItem/:id", async (req, res) => {
+      const id = req.params.id;
+      console.log(id);
+      const query = { _id: new ObjectId(id) };
+      const result = await propertyCollection.findOne(query);
+      res.send(result);
+    });
+
     app.delete("/allWishlist", async (req, res) => {
       const id = req.query.id;
       const email = req.query.email;
@@ -255,7 +282,23 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/allReviewsByEmail/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { reviewerEmail: email };
+      const result = await reviewCollection.find(query).toArray();
+      res.send(result);
+    });
+
     app.delete("/allReviews/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { _id: new ObjectId(id) };
+
+      const result = await reviewCollection.deleteOne(query);
+
+      res.send(result);
+    });
+
+    app.delete("/allMyReviews/:id", async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
 
