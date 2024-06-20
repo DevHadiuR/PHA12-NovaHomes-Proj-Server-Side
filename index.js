@@ -311,6 +311,59 @@ async function run() {
       res.send(result);
     });
 
+    // handle acceptence in offer properties collection
+    app.patch("/allOfferedProperties/accepted/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          offerPropertyVerificationStatus: "Accepted",
+        },
+      };
+
+      const result = await OfferedPropertyCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      if (result.modifiedCount > 0) {
+        const acceptedOffer = await OfferedPropertyCollection.findOne(filter);
+        const propertyTitle = acceptedOffer.propertyTitle;
+
+        const rejectFilter = {
+          propertyTitle: propertyTitle,
+          _id: { $ne: new ObjectId(id) },
+        };
+        const rejectUpdateDoc = {
+          $set: {
+            offerPropertyVerificationStatus: "Rejected",
+          },
+        };
+
+        await OfferedPropertyCollection.updateMany(
+          rejectFilter,
+          rejectUpdateDoc
+        );
+      }
+      res.send(result);
+    });
+
+    // handle rejection in offer properties collection
+    app.patch("/allOfferedProperties/rejected/:id", async (req, res) => {
+      const id = req.params.id;
+      const filter = { _id: new ObjectId(id) };
+      const updateDoc = {
+        $set: {
+          offerPropertyVerificationStatus: "Rejected",
+        },
+      };
+
+      const result = await OfferedPropertyCollection.updateOne(
+        filter,
+        updateDoc
+      );
+      res.send(result);
+    });
+
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
