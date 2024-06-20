@@ -39,6 +39,9 @@ async function run() {
     const propertyCollection = client
       .db("novaHomesDB")
       .collection("properties");
+    const OfferedPropertyCollection = client
+      .db("novaHomesDB")
+      .collection("Offeredproperties");
 
     // users collection
     app.post("/allUsers", async (req, res) => {
@@ -229,24 +232,6 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/makeAnOfferWishlistItem", async (req, res) => {
-    //   const id = req.query.id;
-    //   const email = req.query.email;
-    //   console.log(id, email);
-    //   const query = { propertyId: id, wishlistUserEmail: email };
-    //   const result = await wishlistCollection.findOne(query);
-    //   res.send(result);
-    // });
-
-    // app.get("/makeAnOfferWishlistItem", async (req, res) => {
-    //   const id = req.query.id;
-    //   const email = req.query.email;
-    //   console.log(id,email);
-    //   const query = { propertyId: id, wishlistUserEmail: email };
-    //   const result = await wishlistCollection.findOne(query);
-    //   res.send(result);
-    // });
-
     app.get("/makeAnOfferWishlistItem/:id", async (req, res) => {
       const id = req.params.id;
       console.log(id);
@@ -304,6 +289,20 @@ async function run() {
 
       const result = await reviewCollection.deleteOne(query);
 
+      res.send(result);
+    });
+
+    //  Offered property Collection from here
+    app.post("/allOfferedProperties", async (req, res) => {
+      const offeredData = req.body;
+      const result = await OfferedPropertyCollection.insertOne(offeredData);
+      res.send(result);
+    });
+
+    app.get("/allOfferedProperties/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { buyerEmail: email };
+      const result = await OfferedPropertyCollection.find(query).toArray();
       res.send(result);
     });
 
