@@ -385,25 +385,42 @@ async function run() {
     // payment intent
     app.post("/create-payment-intent", async (req, res) => {
       const { price } = req.body;
-
       const amount = parseInt(price * 100);
       console.log(price, amount);
-      const paymentIntent = await stripe.paymentIntents.create({
-        amount: amount,
-        currency: "usd",
-        payment_method_types: ["card"],
-      });
-      res.send({
-        clientSecret: paymentIntent.client_secret,
-      });
+      if (amount) {
+        const paymentIntent = await stripe.paymentIntents.create({
+          amount: amount,
+          currency: "usd",
+          payment_method_types: ["card"],
+        });
+        res.send({
+          clientSecret: paymentIntent.client_secret,
+        });
+      }
     });
 
     app.post("/allPayments", async (req, res) => {
       const payments = req.body;
       console.log("payment info :", payments);
+      const updateDataId = payments.offeredPropertyById;
+      const query = { _id: new ObjectId(updateDataId) };
+      const updateProp = await OfferedPropertyCollection.findOne(query);
+      console.log("searching info", updateProp);
+      const updateDoc = {
+        $set: {
+          offerPropertyVerificationStatus: "Bought",
+          transactionId: payments.transactionId,
+        },
+      };
+
+      const updateResult = await OfferedPropertyCollection.updateOne(
+        query,
+        updateDoc
+      );
+
       const paymentResult = await paymentCollection.insertOne(payments);
 
-      res.send({ paymentResult });
+      res.send({ paymentResult, updateResult });
     });
 
     app.get("/allPayments/:email", async (req, res) => {
