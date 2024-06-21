@@ -3,6 +3,9 @@ const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
 const { verify } = require("jsonwebtoken");
+const stripe = require("stripe")(
+  "sk_test_51PNrFQB02S9bUZUJSnsFJbIenuOqczyzTAZc6BbpMxIe2gnE6bkknkVXmkuEtZGQDCmUwWo6wF55IsGn1suBhdzr00B0MEK7Cp"
+);
 const app = express();
 const port = process.env.PORT || 5000;
 
@@ -42,6 +45,7 @@ async function run() {
     const OfferedPropertyCollection = client
       .db("novaHomesDB")
       .collection("Offeredproperties");
+    const paymentCollection = client.db("novaHomesDB").collection("payments");
 
     // users collection
     app.post("/allUsers", async (req, res) => {
@@ -306,6 +310,20 @@ async function run() {
       res.send(result);
     });
 
+    app.get("/allOfferedPropertiesForAgent/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { agentEmail: email };
+      const result = await OfferedPropertyCollection.find(query).toArray();
+      res.send(result);
+    });
+
+    app.get("/offeredPropertyById/:id", async (req, res) => {
+      const id = req.params.id;
+      const query = { propertyId: id };
+      const result = await OfferedPropertyCollection.findOne(query);
+      res.send(result);
+    });
+
     app.get("/allOfferedProperties", async (req, res) => {
       const result = await OfferedPropertyCollection.find().toArray();
       res.send(result);
@@ -364,6 +382,36 @@ async function run() {
       res.send(result);
     });
 
+    // payment intent
+    app.post("/create-payment-intent", async (req, res) => {
+      const { price } = req.body;
+
+      const amount = parseInt(price * 100);
+      console.log(price, amount);
+      const paymentIntent = await stripe.paymentIntents.create({
+        amount: amount,
+        currency: "usd",
+        payment_method_types: ["card"],
+      });
+      res.send({
+        clientSecret: paymentIntent.client_secret,
+      });
+    });
+
+    app.post("/allPayments", async (req, res) => {
+      const payments = req.body;
+      console.log("payment info :", payments);
+      const paymentResult = await paymentCollection.insertOne(payments);
+
+      res.send({ paymentResult });
+    });
+
+    app.get("/allPayments/:email", async (req, res) => {
+      const email = req.params.email;
+      const query = { agentEmail: email };
+      const result = await paymentCollection.find(query).toArray();
+      res.send(result);
+    });
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
