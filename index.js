@@ -13,6 +13,12 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
+// app.use(
+//   cors({
+//     origin: ["http://localhost:5173"],
+//   })
+// );
+
 app.get("/", async (req, res) => {
   res.send("Nova Homes Server Site Activate!");
 });
@@ -73,6 +79,29 @@ async function run() {
       res.send({ token });
     });
 
+    // middleweare for verify admin
+    const verifyAdmin = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAdmin = user?.role === "admin";
+      if (!isAdmin) {
+        return res.status(403).send({ message: "forbiden acess" });
+      }
+      next();
+    };
+    // middleweare for verify agent
+    const verifyAgent = async (req, res, next) => {
+      const email = req.decoded.email;
+      const query = { email: email };
+      const user = await userCollection.findOne(query);
+      const isAgent = user?.role === "agent";
+      if (!isAgent) {
+        return res.status(403).send({ message: "forbiden acess" });
+      }
+      next();
+    };
+
     // users collection
     app.post("/allUsers", async (req, res) => {
       const userInfo = req.body;
@@ -87,54 +116,69 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/allUsers", verifyToken, async (req, res) => {
+    app.get("/allUsers", verifyToken, verifyAdmin, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
     // make user admin route
-    app.patch("/allUsers/admin/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "admin",
-        },
-      };
+    app.patch(
+      "/allUsers/admin/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: "admin",
+          },
+        };
 
-      const result = await userCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
 
     // make user agent route
-    app.patch("/allUsers/agent/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "agent",
-        },
-      };
+    app.patch(
+      "/allUsers/agent/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: "agent",
+          },
+        };
 
-      const result = await userCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
     // make user fraud route
-    app.patch("/allUsers/fraud/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          role: "fraud",
-        },
-      };
+    app.patch(
+      "/allUsers/fraud/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            role: "fraud",
+          },
+        };
 
-      const result = await userCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
+        const result = await userCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
 
     // handle user delete route
-    app.delete("/allUsers/:id", verifyToken, async (req, res) => {
+    app.delete("/allUsers/:id", verifyToken, verifyAdmin, async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const query = { _id: new ObjectId(id) };
@@ -145,6 +189,9 @@ async function run() {
     // handle user role route
     app.get("/allUsers/userRole/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbiden access" });
+      }
       const query = { email: email };
       const user = await userCollection.findOne(query);
 
@@ -162,18 +209,26 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/allProperties", verifyToken, async (req, res) => {
+    app.post("/allProperties", verifyToken, verifyAgent, async (req, res) => {
       const propertyItem = req.body;
       const result = await propertyCollection.insertOne(propertyItem);
       res.send(result);
     });
 
-    app.get("/allProperties/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { agentEmail: email };
-      const result = await propertyCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/allProperties/:email",
+      verifyToken,
+      verifyAgent,
+      async (req, res) => {
+        const email = req.params.email;
+        if (email !== req.decoded.email) {
+          return res.status(403).send({ message: "Forbiden access" });
+        }
+        const query = { agentEmail: email };
+        const result = await propertyCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
     app.get("/propertiesById/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
@@ -183,55 +238,78 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/allProperties/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const body = req.body;
-      const query = { _id: new ObjectId(id) };
-      const existingProperty = await propertyCollection.findOne(query);
-      const updatedProperty = {
-        $set: {
-          ...existingProperty,
-          ...body,
-        },
-      };
-      const result = await propertyCollection.updateOne(query, updatedProperty);
-      res.send(result);
-    });
+    app.patch(
+      "/allProperties/:id",
+      verifyToken,
+      verifyAgent,
+      async (req, res) => {
+        const id = req.params.id;
+        const body = req.body;
+        const query = { _id: new ObjectId(id) };
+        const existingProperty = await propertyCollection.findOne(query);
+        const updatedProperty = {
+          $set: {
+            ...existingProperty,
+            ...body,
+          },
+        };
+        const result = await propertyCollection.updateOne(
+          query,
+          updatedProperty
+        );
+        res.send(result);
+      }
+    );
 
-    app.delete("/allProperties/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const query = { _id: new ObjectId(id) };
+    app.delete(
+      "/allProperties/:id",
+      verifyToken,
+      verifyAgent,
+      async (req, res) => {
+        const id = req.params.id;
+        const query = { _id: new ObjectId(id) };
 
-      const result = await propertyCollection.deleteOne(query);
+        const result = await propertyCollection.deleteOne(query);
 
-      res.send(result);
-    });
+        res.send(result);
+      }
+    );
 
-    app.patch("/allProperties/verified/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          verificationStatus: "Verified",
-        },
-      };
+    app.patch(
+      "/allProperties/verified/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            verificationStatus: "Verified",
+          },
+        };
 
-      const result = await propertyCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
+        const result = await propertyCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
 
-    app.patch("/allProperties/reject/:id", verifyToken, async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          verificationStatus: "Rejected",
-        },
-      };
+    app.patch(
+      "/allProperties/reject/:id",
+      verifyToken,
+      verifyAdmin,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            verificationStatus: "Rejected",
+          },
+        };
 
-      const result = await propertyCollection.updateOne(filter, updateDoc);
-      res.send(result);
-    });
+        const result = await propertyCollection.updateOne(filter, updateDoc);
+        res.send(result);
+      }
+    );
 
     app.get("/allAdminVerifiedProperites", async (req, res) => {
       const query = { verificationStatus: "Verified" };
@@ -243,7 +321,11 @@ async function run() {
     app.post("/allWishlist", async (req, res) => {
       const wishlistInfo = req.body;
       const propertyId = wishlistInfo.propertyId;
-      const query = { propertyId: propertyId };
+      const userEmail = wishlistInfo.wishlistUserEmail;
+      const query = {
+        propertyId: propertyId,
+        wishlistUserEmail: userEmail,
+      };
       const isWishlistExist = await wishlistCollection.findOne(query);
 
       if (isWishlistExist) {
@@ -257,6 +339,9 @@ async function run() {
 
     app.get("/allWishlist/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbiden access" });
+      }
       const query = { wishlistUserEmail: email };
       const result = await wishlistCollection.find(query).toArray();
       res.send(result);
@@ -299,6 +384,9 @@ async function run() {
 
     app.get("/allReviewsByEmail/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbiden access" });
+      }
       const query = { reviewerEmail: email };
       const result = await reviewCollection.find(query).toArray();
       res.send(result);
@@ -331,6 +419,9 @@ async function run() {
 
     app.get("/allOfferedProperties/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
+      if (email !== req.decoded.email) {
+        return res.status(403).send({ message: "Forbiden access" });
+      }
       const query = { buyerEmail: email };
       const result = await OfferedPropertyCollection.find(query).toArray();
       res.send(result);
@@ -339,6 +430,7 @@ async function run() {
     app.get(
       "/allOfferedPropertiesForAgent/:email",
       verifyToken,
+      verifyAgent,
       async (req, res) => {
         const email = req.params.email;
         const query = { agentEmail: email };
@@ -360,57 +452,67 @@ async function run() {
     });
 
     // handle acceptence in offer properties collection
-    app.patch("/allOfferedProperties/accepted/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          offerPropertyVerificationStatus: "Accepted",
-        },
-      };
-
-      const result = await OfferedPropertyCollection.updateOne(
-        filter,
-        updateDoc
-      );
-      if (result.modifiedCount > 0) {
-        const acceptedOffer = await OfferedPropertyCollection.findOne(filter);
-        const propertyTitle = acceptedOffer.propertyTitle;
-
-        const rejectFilter = {
-          propertyTitle: propertyTitle,
-          _id: { $ne: new ObjectId(id) },
+    app.patch(
+      "/allOfferedProperties/accepted/:id",
+      verifyToken,
+      verifyAgent,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
+          $set: {
+            offerPropertyVerificationStatus: "Accepted",
+          },
         };
-        const rejectUpdateDoc = {
+
+        const result = await OfferedPropertyCollection.updateOne(
+          filter,
+          updateDoc
+        );
+        if (result.modifiedCount > 0) {
+          const acceptedOffer = await OfferedPropertyCollection.findOne(filter);
+          const propertyTitle = acceptedOffer.propertyTitle;
+
+          const rejectFilter = {
+            propertyTitle: propertyTitle,
+            _id: { $ne: new ObjectId(id) },
+          };
+          const rejectUpdateDoc = {
+            $set: {
+              offerPropertyVerificationStatus: "Rejected",
+            },
+          };
+
+          await OfferedPropertyCollection.updateMany(
+            rejectFilter,
+            rejectUpdateDoc
+          );
+        }
+        res.send(result);
+      }
+    );
+
+    // handle rejection in offer properties collection
+    app.patch(
+      "/allOfferedProperties/rejected/:id",
+      verifyToken,
+      verifyAgent,
+      async (req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updateDoc = {
           $set: {
             offerPropertyVerificationStatus: "Rejected",
           },
         };
 
-        await OfferedPropertyCollection.updateMany(
-          rejectFilter,
-          rejectUpdateDoc
+        const result = await OfferedPropertyCollection.updateOne(
+          filter,
+          updateDoc
         );
+        res.send(result);
       }
-      res.send(result);
-    });
-
-    // handle rejection in offer properties collection
-    app.patch("/allOfferedProperties/rejected/:id", async (req, res) => {
-      const id = req.params.id;
-      const filter = { _id: new ObjectId(id) };
-      const updateDoc = {
-        $set: {
-          offerPropertyVerificationStatus: "Rejected",
-        },
-      };
-
-      const result = await OfferedPropertyCollection.updateOne(
-        filter,
-        updateDoc
-      );
-      res.send(result);
-    });
+    );
 
     // payment intent
     app.post("/create-payment-intent", async (req, res) => {
@@ -453,12 +555,20 @@ async function run() {
       res.send({ paymentResult, updateResult });
     });
 
-    app.get("/allPayments/:email", verifyToken, async (req, res) => {
-      const email = req.params.email;
-      const query = { agentEmail: email };
-      const result = await paymentCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/allPayments/:email",
+      verifyToken,
+      verifyAgent,
+      async (req, res) => {
+        const email = req.params.email;
+        if (email !== req.decoded.email) {
+          return res.status(403).send({ message: "Forbiden access" });
+        }
+        const query = { agentEmail: email };
+        const result = await paymentCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
     // Send a ping to confirm a successful connection
     await client.db("admin").command({ ping: 1 });
     console.log(
