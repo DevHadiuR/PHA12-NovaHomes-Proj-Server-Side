@@ -2,7 +2,7 @@ const express = require("express");
 const cors = require("cors");
 require("dotenv").config();
 const { MongoClient, ServerApiVersion, ObjectId } = require("mongodb");
-const { verify } = require("jsonwebtoken");
+const jwt = require("jsonwebtoken");
 const stripe = require("stripe")(
   "sk_test_51PNrFQB02S9bUZUJSnsFJbIenuOqczyzTAZc6BbpMxIe2gnE6bkknkVXmkuEtZGQDCmUwWo6wF55IsGn1suBhdzr00B0MEK7Cp"
 );
@@ -16,6 +16,23 @@ app.use(express.json());
 app.get("/", async (req, res) => {
   res.send("Nova Homes Server Site Activate!");
 });
+
+// meddleware for verify token
+const verifyToken = (req, res, next) => {
+  console.log(req.headers.authorization);
+  if (!req.headers.authorization) {
+    return res.status(401).send({ message: "unauthorized access!" });
+  }
+
+  const token = req.headers.authorization.split(" ")[1];
+  jwt.verify(token, process.env.Access_Secret_token, (error, decoded) => {
+    if (error) {
+      return res.status(401).send({ message: "unauthorized access" });
+    }
+    req.decoded = decoded;
+    next();
+  });
+};
 
 // Mongodb database start from here
 
@@ -47,6 +64,15 @@ async function run() {
       .collection("Offeredproperties");
     const paymentCollection = client.db("novaHomesDB").collection("payments");
 
+    // jwt area
+    app.post("/jwt", async (req, res) => {
+      const user = req.body;
+      const token = jwt.sign(user, process.env.Access_Secret_token, {
+        expiresIn: "10d",
+      });
+      res.send({ token });
+    });
+
     // users collection
     app.post("/allUsers", async (req, res) => {
       const userInfo = req.body;
@@ -61,13 +87,13 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/allUsers", async (req, res) => {
+    app.get("/allUsers", verifyToken, async (req, res) => {
       const result = await userCollection.find().toArray();
       res.send(result);
     });
 
     // make user admin route
-    app.patch("/allUsers/admin/:id", async (req, res) => {
+    app.patch("/allUsers/admin/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -81,7 +107,7 @@ async function run() {
     });
 
     // make user agent route
-    app.patch("/allUsers/agent/:id", async (req, res) => {
+    app.patch("/allUsers/agent/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -94,7 +120,7 @@ async function run() {
       res.send(result);
     });
     // make user fraud route
-    app.patch("/allUsers/fraud/:id", async (req, res) => {
+    app.patch("/allUsers/fraud/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -108,7 +134,7 @@ async function run() {
     });
 
     // handle user delete route
-    app.delete("/allUsers/:id", async (req, res) => {
+    app.delete("/allUsers/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const query = { _id: new ObjectId(id) };
@@ -117,7 +143,7 @@ async function run() {
     });
 
     // handle user role route
-    app.get("/allUsers/userRole/:email", async (req, res) => {
+    app.get("/allUsers/userRole/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { email: email };
       const user = await userCollection.findOne(query);
@@ -136,20 +162,20 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/allProperties", async (req, res) => {
+    app.post("/allProperties", verifyToken, async (req, res) => {
       const propertyItem = req.body;
       const result = await propertyCollection.insertOne(propertyItem);
       res.send(result);
     });
 
-    app.get("/allProperties/:email", async (req, res) => {
+    app.get("/allProperties/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { agentEmail: email };
       const result = await propertyCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/propertiesById/:id", async (req, res) => {
+    app.get("/propertiesById/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
 
       const query = { _id: new ObjectId(id) };
@@ -157,7 +183,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/allProperties/:id", async (req, res) => {
+    app.patch("/allProperties/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const body = req.body;
       const query = { _id: new ObjectId(id) };
@@ -172,7 +198,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/allProperties/:id", async (req, res) => {
+    app.delete("/allProperties/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
 
@@ -181,7 +207,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/allProperties/verified/:id", async (req, res) => {
+    app.patch("/allProperties/verified/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -194,7 +220,7 @@ async function run() {
       res.send(result);
     });
 
-    app.patch("/allProperties/reject/:id", async (req, res) => {
+    app.patch("/allProperties/reject/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const filter = { _id: new ObjectId(id) };
       const updateDoc = {
@@ -229,14 +255,14 @@ async function run() {
       res.status(201).send(result);
     });
 
-    app.get("/allWishlist/:email", async (req, res) => {
+    app.get("/allWishlist/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { wishlistUserEmail: email };
       const result = await wishlistCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/makeAnOfferWishlistItem/:id", async (req, res) => {
+    app.get("/makeAnOfferWishlistItem/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       console.log(id);
       const query = { _id: new ObjectId(id) };
@@ -244,7 +270,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/allWishlist", async (req, res) => {
+    app.delete("/allWishlist", verifyToken, async (req, res) => {
       const id = req.query.id;
       const email = req.query.email;
       const query = { propertyId: id, wishlistUserEmail: email };
@@ -258,7 +284,7 @@ async function run() {
       res.send(result);
     });
 
-    app.post("/allReviews", async (req, res) => {
+    app.post("/allReviews", verifyToken, async (req, res) => {
       const reviewData = req.body;
       const result = await reviewCollection.insertOne(reviewData);
       res.send(result);
@@ -271,14 +297,14 @@ async function run() {
       res.send(result);
     });
 
-    app.get("/allReviewsByEmail/:email", async (req, res) => {
+    app.get("/allReviewsByEmail/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { reviewerEmail: email };
       const result = await reviewCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.delete("/allReviews/:id", async (req, res) => {
+    app.delete("/allReviews/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
 
@@ -287,7 +313,7 @@ async function run() {
       res.send(result);
     });
 
-    app.delete("/allMyReviews/:id", async (req, res) => {
+    app.delete("/allMyReviews/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { _id: new ObjectId(id) };
 
@@ -297,34 +323,38 @@ async function run() {
     });
 
     //  Offered property Collection from here
-    app.post("/allOfferedProperties", async (req, res) => {
+    app.post("/allOfferedProperties", verifyToken, async (req, res) => {
       const offeredData = req.body;
       const result = await OfferedPropertyCollection.insertOne(offeredData);
       res.send(result);
     });
 
-    app.get("/allOfferedProperties/:email", async (req, res) => {
+    app.get("/allOfferedProperties/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { buyerEmail: email };
       const result = await OfferedPropertyCollection.find(query).toArray();
       res.send(result);
     });
 
-    app.get("/allOfferedPropertiesForAgent/:email", async (req, res) => {
-      const email = req.params.email;
-      const query = { agentEmail: email };
-      const result = await OfferedPropertyCollection.find(query).toArray();
-      res.send(result);
-    });
+    app.get(
+      "/allOfferedPropertiesForAgent/:email",
+      verifyToken,
+      async (req, res) => {
+        const email = req.params.email;
+        const query = { agentEmail: email };
+        const result = await OfferedPropertyCollection.find(query).toArray();
+        res.send(result);
+      }
+    );
 
-    app.get("/offeredPropertyById/:id", async (req, res) => {
+    app.get("/offeredPropertyById/:id", verifyToken, async (req, res) => {
       const id = req.params.id;
       const query = { propertyId: id };
       const result = await OfferedPropertyCollection.findOne(query);
       res.send(result);
     });
 
-    app.get("/allOfferedProperties", async (req, res) => {
+    app.get("/allOfferedProperties", verifyToken, async (req, res) => {
       const result = await OfferedPropertyCollection.find().toArray();
       res.send(result);
     });
@@ -423,7 +453,7 @@ async function run() {
       res.send({ paymentResult, updateResult });
     });
 
-    app.get("/allPayments/:email", async (req, res) => {
+    app.get("/allPayments/:email", verifyToken, async (req, res) => {
       const email = req.params.email;
       const query = { agentEmail: email };
       const result = await paymentCollection.find(query).toArray();
