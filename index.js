@@ -317,6 +317,21 @@ async function run() {
       res.send(result);
     });
 
+    // app.get("/allAdminVerifiedProperitesBySearch", async (req, res) => {
+    //   const search = req.query.search;
+
+    //   let query = {
+    //     title: {
+    //       $regex: search,
+    //       $options: "i",
+    //     },
+        
+    //   };
+
+    //   const result = await propertyCollection.find(query).toArray();
+    //   res.send(result);
+    // });
+
     // wishlist collection from here
     app.post("/allWishlist", async (req, res) => {
       const wishlistInfo = req.body;
