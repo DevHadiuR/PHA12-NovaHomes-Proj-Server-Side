@@ -13,11 +13,15 @@ const port = process.env.PORT || 5000;
 app.use(cors());
 app.use(express.json());
 
-// app.use(
-//   cors({
-//     origin: ["http://localhost:5173"],
-//   })
-// );
+app.use(
+  cors({
+    origin: [
+      "http://localhost:5173",
+      "https://assignment-12-novahomes-proj.web.app",
+      "https://assignment-12-novahomes-proj.firebaseapp.com",
+    ],
+  })
+);
 
 app.get("/", async (req, res) => {
   res.send("Nova Homes Server Site Activate!");
@@ -56,7 +60,7 @@ const client = new MongoClient(uri, {
 async function run() {
   try {
     // Connect the client to the server	(optional starting in v4.7)
-    await client.connect();
+    // await client.connect();
 
     // All Collections are here
     const userCollection = client.db("novaHomesDB").collection("users");
@@ -317,20 +321,21 @@ async function run() {
       res.send(result);
     });
 
-    // app.get("/allAdminVerifiedProperitesBySearch", async (req, res) => {
-    //   const search = req.query.search;
-
-    //   let query = {
-    //     title: {
-    //       $regex: search,
-    //       $options: "i",
-    //     },
-        
-    //   };
-
-    //   const result = await propertyCollection.find(query).toArray();
-    //   res.send(result);
-    // });
+    app.get("/allAdminVerifiedProperitesBySearch", async (req, res) => {
+      const search = req.query.search;
+      let query = { verificationStatus: "Verified" };
+      if (search) {
+        query = {
+          propertyLocation: {
+            $regex: search,
+            $options: "i",
+          },
+          verificationStatus: "Verified",
+        };
+      }
+      const result = await propertyCollection.find(query).toArray();
+      res.send(result);
+    });
 
     // wishlist collection from here
     app.post("/allWishlist", async (req, res) => {
@@ -585,10 +590,10 @@ async function run() {
       }
     );
     // Send a ping to confirm a successful connection
-    await client.db("admin").command({ ping: 1 });
-    console.log(
-      "Pinged your deployment. You successfully connected to MongoDB!"
-    );
+    // await client.db("admin").command({ ping: 1 });
+    // console.log(
+    //   "Pinged your deployment. You successfully connected to MongoDB!"
+    // );
   } finally {
     // Ensures that the client will close when you finish/error
     // await client.close();
